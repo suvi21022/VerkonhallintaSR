@@ -1,0 +1,53 @@
+---
+- name: Start and enable web server
+  hosts: web1
+  become: true
+
+  vars:
+    web_server: nginx
+
+  tasks:
+
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Install web server
+      apt:
+        name: "{{ web_server }}"
+        state: present
+
+    - name: Create index page
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <html>
+          <head>
+            <title>HAMK Ansible Web Server</title>
+          </head>
+          <body>
+            <h1>Web server: {{ inventory_hostname }}</h1>
+            <p>This page was created with Ansible.</p>
+          </body>
+          </html>
+
+    - name: Check if web server is running
+      shell:
+        cmd: pgrep nginx
+      register: nginx_process
+      failed_when: false
+      changed_when: false
+
+    - name: Start web server
+      shell:
+        cmd: nginx
+      when: nginx_process.rc != 0
+
+    - name: Verify web server responds
+      uri:
+        url: http://localhost
+        status_code: 200
+
+    - name: Display verification result
+      debug:
+        msg: "Web server is running on {{ inventory_hostname }}"
